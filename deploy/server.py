@@ -1,0 +1,170 @@
+import os
+import json
+import re
+import uuid
+import base64
+import time
+import urllib.request
+import urllib.error
+from flask import Flask, request, jsonify, send_from_directory, Response
+
+app = Flask(__name__, static_folder="static", static_url_path="")
+
+temp_images = {}
+
+def cleanup_expired():
+    now = time.time()
+    for k in [k for k, v in temp_images.items() if v["expires"] < now]:
+        del temp_images[k]
+
+@app.route("/api/healthz")
+def health():
+    return jsonify({"status": "ok"})
+
+@app.route("/api/temp/<image_id>")
+def get_temp_image(image_id):
+    cleanup_expired()
+    entry = temp_images.get(image_id)
+    if not entry or entry["expires"] < time.time():
+        return jsonify({"error": "Not found"}), 404
+    return Response(entry["data"], mimetype=entry["mime_type"])
+
+@app.route("/api/analyze", methods=["POST"])
+def analyze():
+    cleanup_expired()
+
+    body = request.get_json(force=True)
+    if not body or "imageBase64" not in body or "mimeType" not in body:
+        return jsonify({"error": "Invalid request body"}), 400
+
+    image_base64 = body["imageBase64"]
+    mime_type    = body["mimeType"]
+
+    api_key = os.environ.get("GROK_API_KEY")
+    if not api_key:
+        return jsonify({"error": "GROK_API_KEY не настроен"}), 500
+
+    image_id = str(uuid.uuid4())
+    temp_images[image_id] = {
+        "data":      base64.b64decode(image_base64),
+        "mime_type": mime_type,
+        "expires":   time.time() + 300,
+    }
+
+    render_url = os.environ.get("RENDER_EXTERNAL_URL", "").rstrip("/")
+    replit_domains = os.environ.get("REPLIT_DOMAINS", "")
+    dev_domain = os.environ.get("REPLIT_DEV_DOMAIN", "")
+    host = replit_domains.split(",")[0].strip() if replit_domains else dev_domain
+
+    if render_url:
+        image_url = f"{render_url}/api/temp/{image_id}"
+    elif host:
+        image_url = f"https://{host}/api/temp/{image_id}"
+    else:
+        image_url = f"data:{mime_type};base64,{image_base64}"
+
+    prompt = """Ты — беспощадный, жёсткий критик компьютерных сетапов с 15-летним опытом. Ты видел тысячи сетапов уровня студии и не прощаешь посредственность. Твоя задача — честная, резкая, объективная оценка без лишней дипломатии.
+
+ПРАВИЛА ОЦЕНКИ:
+- Оценка 9-10: только абсолютно безупречные, студийного уровня сетапы
+- Оценка 7-8: хорошая работа, но есть заметные недостатки
+- Оценка 5-6: среднячок, много явных проблем
+- Оценка 3-4: слабо, требует серьёзной переработки
+- Оценка 1-2: катастрофа, нужно начинать с нуля
+- Средний стол получает 4-5, НЕ 7-8. Будь строг.
+
+Проанализируй фотографию компьютерного места и оцени по каждому критерию ЖЁСТКО и ЧЕСТНО.
+
+Критерии:
+1. Эстетика — цветовая гамма, стиль, визуальная целостность, подбор периферии
+2. Освещение — качество, направление, цветовая температура, наличие bias lighting
+3. Чистота — пыль, беспорядок, лишние предметы, провода на столе
+4. Эргономика — высота монитора, расстояние, угол обзора, положение клавиатуры/мыши
+5. Кабель-менеджмент — видимые провода, cable box, кабель-каналы
+6. Атмосфера — общее ощущение, уют, "хочется ли здесь работать/играть"
+7. Минимализм — нет ли лишнего на столе, соблюдается ли принцип "меньше — лучше"
+
+Для каждого критерия:
+- поставь оценку от 1 до 10 (честно, без завышения)
+- напиши резкий, конкретный комментарий на русском языке
+
+После этого:
+- поставь общую взвешенную оценку
+- напиши подробный обзор в стиле жёсткого критика
+- дай 3-5 конкретных советов по улучшению
+
+Отвечай ТОЛЬКО в JSON формате:
+{
+  "overall_score": 5.2,
+  "categories": {
+    "aesthetics":        { "score": 6, "comment": "..." },
+    "lighting":          { "score": 4, "comment": "..." },
+    "cleanliness":       { "score": 5, "comment": "..." },
+    "ergonomics":        { "score": 6, "comment": "..." },
+    "cable_management":  { "score": 3, "comment": "..." },
+    "atmosphere":        { "score": 5, "comment": "..." },
+    "minimalism":        { "score": 4, "comment": "..." }
+  },
+  "review": "...",
+  "tips": ["совет 1", "совет 2", "совет 3"]
+}"""
+
+    payload = json.dumps({
+        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "messages": [{
+            "role": "user",
+            "content": [
+                {"type": "image_url", "image_url": {"url": image_url}},
+                {"type": "text",      "text": prompt},
+            ],
+        }],
+        "temperature": 0.3,
+        "max_tokens":  2000,
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        "https://api.groq.com/openai/v1/chat/completions",
+        data=payload,
+        headers={
+            "Content-Type":  "application/json",
+            "Authorization": f"Bearer {api_key}",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(req) as resp:
+            groq_data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        print(f"Groq error {e.code}: {e.read().decode()}")
+        return jsonify({"error": "Ошибка AI сервиса"}), 500
+    except Exception as e:
+        print(f"Request error: {e}")
+        return jsonify({"error": "Внутренняя ошибка"}), 500
+    finally:
+        temp_images.pop(image_id, None)
+
+    content = groq_data.get("choices", [{}])[0].get("message", {}).get("content", "")
+    if not content:
+        return jsonify({"error": "Пустой ответ от AI"}), 500
+
+    match = re.search(r"\{[\s\S]*\}", content)
+    if not match:
+        return jsonify({"error": "Не удалось разобрать ответ AI"}), 500
+
+    try:
+        return jsonify(json.loads(match.group(0)))
+    except json.JSONDecodeError:
+        return jsonify({"error": "Не удалось разобрать ответ AI"}), 500
+
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_spa(path):
+    full = os.path.join(app.static_folder, path)
+    if path and os.path.exists(full):
+        return send_from_directory(app.static_folder, path)
+    return send_from_directory(app.static_folder, "index.html")
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
