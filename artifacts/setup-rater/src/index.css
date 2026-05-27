@@ -130,12 +130,26 @@
 }
 
 @keyframes petal-fall {
-  0% {
-    transform: translate3d(0, -10vh, 0) rotate(0deg);
-    opacity: 1;
+  0%   {
+    transform: translate3d(0, -12vh, 0) rotate(0deg);
+    opacity: 0;
   }
+  4%   { opacity: 0.85; }
+  20%  {
+    transform: translate3d(calc(var(--drift) * 0.15 + var(--sway, 18px)), 20vh, 0)
+               rotate(calc(var(--spin) * 0.2));
+  }
+  45%  {
+    transform: translate3d(calc(var(--drift) * 0.45 - var(--sway, 18px)), 48vh, 0)
+               rotate(calc(var(--spin) * 0.48));
+  }
+  70%  {
+    transform: translate3d(calc(var(--drift) * 0.72 + var(--sway, 18px)), 74vh, 0)
+               rotate(calc(var(--spin) * 0.74));
+  }
+  92%  { opacity: 0.7; }
   100% {
-    transform: translate3d(var(--drift), 110vh, 0) rotate(var(--spin));
+    transform: translate3d(var(--drift), 112vh, 0) rotate(var(--spin));
     opacity: 0;
   }
 }

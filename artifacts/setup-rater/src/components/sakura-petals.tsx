@@ -8,17 +8,21 @@ interface Petal {
   delay: string;
   drift: string;
   spin: string;
+  sway: string;
+  opacity: number;
 }
 
 function makePetals(): Petal[] {
-  return Array.from({ length: 20 }).map((_, i) => ({
+  return Array.from({ length: 28 }).map((_, i) => ({
     id: i + Date.now(),
-    left: `${Math.random() * 100}vw`,
-    size: Math.random() * 10 + 8,
-    duration: `${Math.random() * 10 + 10}s`,
-    delay: `-${Math.random() * 20}s`,
-    drift: `${Math.random() * 40 - 20}vw`,
-    spin: `${Math.random() * 720 - 360}deg`,
+    left:     `${Math.random() * 100}vw`,
+    size:     Math.random() * 12 + 6,
+    duration: `${Math.random() * 12 + 11}s`,
+    delay:    `-${Math.random() * 24}s`,
+    drift:    `${Math.random() * 50 - 25}vw`,
+    spin:     `${Math.random() * 900 - 450}deg`,
+    sway:     `${Math.random() * 24 + 10}px`,
+    opacity:  0.55 + Math.random() * 0.35,
   }));
 }
 
@@ -29,27 +33,44 @@ function dropPetals(containerEl: HTMLDivElement, onDone: () => void) {
   let finished = 0;
   const total = petalEls.length;
 
-  petalEls.forEach((petal) => {
+  petalEls.forEach((petal, idx) => {
     const rect = petal.getBoundingClientRect();
+    if (rect.width === 0) { finished++; if (finished === total) onDone(); return; }
 
-    // Pin petal at its exact current screen position, kill the CSS float animation
-    petal.style.position = "fixed";
-    petal.style.left = `${rect.left}px`;
-    petal.style.top = `${rect.top}px`;
+    // Freeze petal at its exact current visual position
+    petal.style.position   = "fixed";
+    petal.style.left       = `${rect.left}px`;
+    petal.style.top        = `${rect.top}px`;
     petal.style.animationName = "none";
-    petal.style.transform = "none";
+    petal.style.transform  = "none";
 
-    const distToBottom = window.innerHeight - rect.top + rect.height + 10;
-    const dur = 320 + Math.random() * 160;
+    const distToBottom = window.innerHeight - rect.top + rect.height + 20;
+    const windX        = (Math.random() - 0.5) * 80;   // gentle side drift
+    const endSpin      = (Math.random() - 0.5) * 540;  // tumble as it falls
+    const dur          = 420 + Math.random() * 220;
+    const delay        = idx * 12 + Math.random() * 30; // stagger
 
-    petal.animate(
-      [
-        { transform: "translateY(0px)",              opacity: 1 },
-        { transform: `translateY(${distToBottom}px)`, opacity: 1, offset: 0.82 },
-        { transform: `translateY(${distToBottom}px)`, opacity: 0 },
-      ],
-      { duration: dur, easing: "cubic-bezier(0.55, 0, 1, 1)", fill: "forwards" }
-    ).onfinish = () => {
+    const steps = 10;
+    const frames = Array.from({ length: steps + 1 }, (_, s) => {
+      const t   = s / steps;
+      // quadratic y (gravity), linear x drift
+      const py  = distToBottom * t * t;
+      const px  = windX * t;
+      const rot = endSpin * t;
+      const op  = t < 0.65 ? 1 : Math.max(0, 1 - (t - 0.65) / 0.35);
+      return {
+        transform: `translate(${px}px, ${py}px) rotate(${rot}deg)`,
+        opacity: op,
+        offset: t,
+      };
+    });
+
+    petal.animate(frames, {
+      duration: dur,
+      delay,
+      easing: "linear",
+      fill: "forwards",
+    }).onfinish = () => {
       finished++;
       if (finished === total) onDone();
     };
@@ -91,13 +112,15 @@ export function SakuraPetals() {
           key={petal.id}
           className="sakura-petal"
           style={{
-            left: petal.left,
-            width:  `${petal.size}px`,
-            height: `${petal.size}px`,
+            left:              petal.left,
+            width:             `${petal.size}px`,
+            height:            `${petal.size}px`,
+            opacity:           petal.opacity,
             animationDuration: petal.duration,
             animationDelay:    petal.delay,
-            "--drift": petal.drift,
-            "--spin":  petal.spin,
+            "--drift":         petal.drift,
+            "--spin":          petal.spin,
+            "--sway":          petal.sway,
           } as React.CSSProperties}
         />
       ))}
