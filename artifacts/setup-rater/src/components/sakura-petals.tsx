@@ -31,50 +31,39 @@ function burst(containerEl: HTMLDivElement) {
 
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
-    const count = 4 + Math.floor(Math.random() * 4);
+    const count = 18 + Math.floor(Math.random() * 10);
 
     for (let i = 0; i < count; i++) {
-      const angle = (i / count) * Math.PI * 2 + Math.random() * 0.9;
-      const dist  = 60 + Math.random() * 200;
+      const angle = Math.random() * Math.PI * 2;
+      const dist  = 30 + Math.random() * 180;
       const dx    = Math.cos(angle) * dist;
-      const dy    = Math.sin(angle) * dist - 40; // slight upward kick
-      const size  = rect.width * (0.2 + Math.random() * 0.7);
-      const spin  = (Math.random() - 0.5) * 800;
-      const dur   = 380 + Math.random() * 240;
-      const br    = Math.random() > 0.4 ? "100% 0 100% 0" : "50%";
+      const dy    = Math.sin(angle) * dist - 60;
+      const dur   = 400 + Math.random() * 300;
+      const delay = Math.random() * 60;
 
       const p = document.createElement("div");
       p.style.cssText = `
         position:fixed;
         left:${cx}px;top:${cy}px;
-        width:${size}px;height:${size}px;
+        width:3px;height:3px;
         background:hsl(var(--primary));
-        border-radius:${br};
+        border-radius:0;
         pointer-events:none;
         z-index:9000;
+        image-rendering:pixelated;
         will-change:transform,opacity;
       `;
       document.body.appendChild(p);
 
       p.animate(
         [
-          {
-            transform: `translate(-50%,-50%) scale(1.3) rotate(0deg)`,
-            opacity: 1,
-          },
-          {
-            transform: `translate(calc(-50% + ${dx * 0.35}px), calc(-50% + ${dy * 0.35}px)) scale(1.6) rotate(${spin * 0.3}deg)`,
-            opacity: 1,
-            offset: 0.25,
-          },
-          {
-            transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0) rotate(${spin}deg)`,
-            opacity: 0,
-          },
+          { transform: `translate(-50%,-50%)`, opacity: 1 },
+          { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`, opacity: 0 },
         ],
         {
           duration: dur,
-          easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
+          delay,
+          easing: "cubic-bezier(0.1, 0.8, 0.3, 1)",
           fill: "forwards",
         }
       ).onfinish = () => p.remove();
