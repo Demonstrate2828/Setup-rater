@@ -110,7 +110,7 @@ def analyze():
 }"""
 
     payload = json.dumps({
-        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "model": "llama-3.2-11b-vision-preview",
         "messages": [{
             "role": "user",
             "content": [
@@ -128,6 +128,8 @@ def analyze():
         headers={
             "Content-Type":  "application/json",
             "Authorization": f"Bearer {api_key}",
+            "User-Agent":    "Mozilla/5.0 (compatible; SetupRater/1.0)",
+            "Accept":        "application/json",
         },
         method="POST",
     )
