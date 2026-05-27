@@ -31,21 +31,22 @@ function burst(containerEl: HTMLDivElement) {
 
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
-    const count = 18 + Math.floor(Math.random() * 10);
+    const count = 40 + Math.floor(Math.random() * 20);
+    const radius = 28 + Math.random() * 16;
 
     for (let i = 0; i < count; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const dist  = 30 + Math.random() * 180;
-      const dx    = Math.cos(angle) * dist;
-      const dy    = Math.sin(angle) * dist - 60;
-      const dur   = 400 + Math.random() * 300;
-      const delay = Math.random() * 60;
+      const angle = (i / count) * Math.PI * 2;
+      const r     = radius + (Math.random() - 0.5) * 8;
+      const dx    = Math.cos(angle) * r;
+      const dy    = Math.sin(angle) * r;
+      const dur   = 350 + Math.random() * 200;
+      const delay = Math.random() * 40;
 
       const p = document.createElement("div");
       p.style.cssText = `
         position:fixed;
         left:${cx}px;top:${cy}px;
-        width:3px;height:3px;
+        width:2px;height:2px;
         background:hsl(var(--primary));
         border-radius:0;
         pointer-events:none;
@@ -57,13 +58,14 @@ function burst(containerEl: HTMLDivElement) {
 
       p.animate(
         [
-          { transform: `translate(-50%,-50%)`, opacity: 1 },
-          { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`, opacity: 0 },
+          { transform: `translate(-50%,-50%)`, opacity: 1, offset: 0 },
+          { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`, opacity: 1, offset: 0.6 },
+          { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`, opacity: 0, offset: 1 },
         ],
         {
           duration: dur,
           delay,
-          easing: "cubic-bezier(0.1, 0.8, 0.3, 1)",
+          easing: "cubic-bezier(0.2, 0.9, 0.4, 1)",
           fill: "forwards",
         }
       ).onfinish = () => p.remove();
