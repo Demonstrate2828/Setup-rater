@@ -1,49 +1,29 @@
-# See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
-
-# compiled output
+# Скомпилированный вывод
 dist
 tmp
 out-tsc
 *.tsbuildinfo
-.expo
-.expo-shared
 
-# dependencies
+# Зависимости
 node_modules
 
-# IDEs and editors
+# IDE
 /.idea
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
-
-# IDE - VSCode
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
 
-# misc
-/.sass-cache
-/connect.lock
+# Разное
 /coverage
-/libpeerconnection.log
 npm-debug.log
 yarn-error.log
-testem.log
-/typings
 
-# System Files
+# Системные файлы
 .DS_Store
 Thumbs.db
 
-.cursor/rules/nx-rules.mdc
-.github/instructions/nx.instructions.md
-
-# Replit
+# Replit (локальный кеш и инструменты агента)
 .cache/
 .local/
