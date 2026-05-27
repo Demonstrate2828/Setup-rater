@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: api-server
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && corepack prepare pnpm@10.26.1 --activate && pnpm install && pnpm --filter @workspace/api-server run build
+    startCommand: pnpm --filter @workspace/api-server run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
