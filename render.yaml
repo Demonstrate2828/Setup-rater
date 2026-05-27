@@ -1,14 +1,15 @@
 services:
   - type: web
-    name: api-server
-    runtime: node
+    name: setup-rater
+    runtime: python
     plan: free
-    buildCommand: corepack enable && corepack prepare pnpm@10.26.1 --activate && pnpm install && pnpm --filter @workspace/api-server run build
-    startCommand: pnpm --filter @workspace/api-server run start
+    buildCommand: >-
+      pip install -r requirements.txt &&
+      npx --yes pnpm@latest install &&
+      BASE_PATH=/ PORT=3000 npx --yes pnpm@latest --filter @workspace/setup-rater run build
+    startCommand: gunicorn server:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000
-      - key: DATABASE_URL
+      - key: GROK_API_KEY
         sync: false
