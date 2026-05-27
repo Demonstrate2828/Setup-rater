@@ -22,42 +22,37 @@ function makePetals(): Petal[] {
   }));
 }
 
-function dropPetals(containerEl: HTMLDivElement) {
+function dropPetals(containerEl: HTMLDivElement, onDone: () => void) {
   const petalEls = containerEl.querySelectorAll<HTMLElement>(".sakura-petal");
+  if (petalEls.length === 0) { onDone(); return; }
+
+  let finished = 0;
+  const total = petalEls.length;
 
   petalEls.forEach((petal) => {
     const rect = petal.getBoundingClientRect();
-    if (rect.width === 0) return;
 
-    const startX = rect.left + rect.width / 2;
-    const startY = rect.top + rect.height / 2;
-    const distToBottom = window.innerHeight - startY + rect.height;
+    // Pin petal at its exact current screen position, kill the CSS float animation
+    petal.style.position = "fixed";
+    petal.style.left = `${rect.left}px`;
+    petal.style.top = `${rect.top}px`;
+    petal.style.animationName = "none";
+    petal.style.transform = "none";
 
-    const clone = document.createElement("div");
-    clone.style.cssText = `
-      position:fixed;
-      left:${startX}px;
-      top:${startY}px;
-      width:${rect.width}px;
-      height:${rect.height}px;
-      background:hsl(var(--primary));
-      border-radius:${petal.style.borderRadius || "100% 0 100% 0"};
-      pointer-events:none;
-      z-index:9000;
-      will-change:transform,opacity;
-    `;
-    document.body.appendChild(clone);
+    const distToBottom = window.innerHeight - rect.top + rect.height + 10;
+    const dur = 320 + Math.random() * 160;
 
-    const dur = 280 + Math.random() * 120;
-
-    clone.animate(
+    petal.animate(
       [
-        { transform: `translate(-50%,-50%) translateY(0px)`,              opacity: 1 },
-        { transform: `translate(-50%,-50%) translateY(${distToBottom}px)`, opacity: 1, offset: 0.78 },
-        { transform: `translate(-50%,-50%) translateY(${distToBottom}px)`, opacity: 0 },
+        { transform: "translateY(0px)",              opacity: 1 },
+        { transform: `translateY(${distToBottom}px)`, opacity: 1, offset: 0.82 },
+        { transform: `translateY(${distToBottom}px)`, opacity: 0 },
       ],
       { duration: dur, easing: "cubic-bezier(0.55, 0, 1, 1)", fill: "forwards" }
-    ).onfinish = () => clone.remove();
+    ).onfinish = () => {
+      finished++;
+      if (finished === total) onDone();
+    };
   });
 }
 
@@ -69,8 +64,11 @@ export function SakuraPetals() {
     setPetals(makePetals());
 
     const onExplode = () => {
-      if (containerRef.current) dropPetals(containerRef.current);
-      setPetals([]);
+      if (containerRef.current) {
+        dropPetals(containerRef.current, () => setPetals([]));
+      } else {
+        setPetals([]);
+      }
     };
 
     const onSpawn = () => setPetals(makePetals());
