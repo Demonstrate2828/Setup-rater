@@ -1,50 +1,29 @@
 import os
 import json
 import re
-import uuid
-import base64
-import time
 import urllib.request
 import urllib.error
-from flask import Flask, request, jsonify, send_from_directory, Response
+from flask import Flask, request, jsonify, send_from_directory
 
 app = Flask(__name__, static_folder="static", static_url_path="")
-
-temp_images = {}
-
-def cleanup_expired():
-    now = time.time()
-    for k in [k for k, v in temp_images.items() if v["expires"] < now]:
-        del temp_images[k]
 
 @app.route("/api/healthz")
 def health():
     return jsonify({"status": "ok"})
 
-@app.route("/api/temp/<image_id>")
-def get_temp_image(image_id):
-    cleanup_expired()
-    entry = temp_images.get(image_id)
-    if not entry or entry["expires"] < time.time():
-        return jsonify({"error": "Not found"}), 404
-    return Response(entry["data"], mimetype=entry["mime_type"])
-
 @app.route("/api/analyze", methods=["POST"])
 def analyze():
-    cleanup_expired()
-
     body = request.get_json(force=True)
     if not body or "imageBase64" not in body or "mimeType" not in body:
         return jsonify({"error": "Invalid request body"}), 400
 
     image_base64 = body["imageBase64"]
     mime_type    = body["mimeType"]
+    image_url    = f"data:{mime_type};base64,{image_base64}"
 
     api_key = os.environ.get("GROK_API_KEY")
     if not api_key:
         return jsonify({"error": "GROK_API_KEY не настроен"}), 500
-
-    image_url = f"data:{mime_type};base64,{image_base64}"
 
     prompt = """Ты — беспощадный, жёсткий критик компьютерных сетапов с 15-летним опытом. Ты видел тысячи сетапов уровня студии и не прощаешь посредственность. Твоя задача — честная, резкая, объективная оценка без лишней дипломатии.
 
@@ -121,13 +100,12 @@ def analyze():
         with urllib.request.urlopen(req) as resp:
             groq_data = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
-        print(f"Groq error {e.code}: {e.read().decode()}")
-        return jsonify({"error": "Ошибка AI сервиса"}), 500
+        err = e.read().decode()
+        print(f"Groq error {e.code}: {err}")
+        return jsonify({"error": f"Ошибка AI сервиса: {err}"}), 500
     except Exception as e:
         print(f"Request error: {e}")
         return jsonify({"error": "Внутренняя ошибка"}), 500
-    finally:
-        temp_images.pop(image_id, None)
 
     content = groq_data.get("choices", [{}])[0].get("message", {}).get("content", "")
     if not content:
