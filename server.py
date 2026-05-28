@@ -44,24 +44,7 @@ def analyze():
     if not api_key:
         return jsonify({"error": "GROK_API_KEY не настроен"}), 500
 
-    image_id = str(uuid.uuid4())
-    temp_images[image_id] = {
-        "data":      base64.b64decode(image_base64),
-        "mime_type": mime_type,
-        "expires":   time.time() + 300,
-    }
-
-    render_url = os.environ.get("RENDER_EXTERNAL_URL", "").rstrip("/")
-    replit_domains = os.environ.get("REPLIT_DOMAINS", "")
-    dev_domain = os.environ.get("REPLIT_DEV_DOMAIN", "")
-    host = replit_domains.split(",")[0].strip() if replit_domains else dev_domain
-
-    if render_url:
-        image_url = f"{render_url}/api/temp/{image_id}"
-    elif host:
-        image_url = f"https://{host}/api/temp/{image_id}"
-    else:
-        image_url = f"data:{mime_type};base64,{image_base64}"
+    image_url = f"data:{mime_type};base64,{image_base64}"
 
     prompt = """Ты — беспощадный, жёсткий критик компьютерных сетапов с 15-летним опытом. Ты видел тысячи сетапов уровня студии и не прощаешь посредственность. Твоя задача — честная, резкая, объективная оценка без лишней дипломатии.
 
